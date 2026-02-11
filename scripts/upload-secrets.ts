@@ -2,17 +2,17 @@
 
 /**
  * Upload secrets from .env to Google Cloud Secret Manager
- * 
+ *
  * Usage: npx tsx scripts/upload-secrets.ts [--project PROJECT_ID] [--env-file .env]
- * 
+ *
  * This script:
  * 1. Reads secrets from .env file
  * 2. Creates or updates each secret in Google Cloud Secret Manager
  * 3. Skips non-secret environment variables (like NODE_ENV, PORT)
  */
 
-import { readFileSync } from 'fs';
-import { execSync } from 'child_process';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 // Parse command line arguments
 const args = process.argv.slice(2);

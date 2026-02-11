@@ -41,43 +41,16 @@ npx tsx scripts/upload-secrets.ts --env-file .env.production
 - Provides summary of uploaded secrets
 - Shows Cloud Run deployment command with all secrets
 
-**Example Output:**
-```
-Reading secrets from: .env
-
-Found 1 secrets to upload:
-  - PLATFORM_SERVICE_TOKEN: test-secre...
-
-Uploading to project: my-project
-────────────────────────────────────────────────────────────
-🆕 Creating platform-service-token...
-✅ Created platform-service-token
-────────────────────────────────────────────────────────────
-
-📊 Summary:
-   ✅ Success: 1
-   ❌ Failed: 0
-   📦 Total: 1
-
-💡 To use these secrets in Cloud Run:
-   gcloud run deploy SERVICE_NAME \
-     --update-secrets=PLATFORM_SERVICE_TOKEN=platform-service-token:latest \
-```
-
 ## TypeScript Configuration
 
-Scripts use `scripts/tsconfig.json` which:
-- Extends main tsconfig.json
-- Allows importing from src/ using @/ alias
-- Includes both scripts/ and src/ directories
-- Works with tsx for direct execution
+Scripts use the main `tsconfig.json` with tsx for direct execution. No separate configuration needed.
 
 ## Accessing Project Code
 
-Scripts can import from src:
+Scripts can import from src using relative paths:
 ```typescript
-import { PlatformJWTProvider } from '@/auth/platform-jwt-provider.js';
-import { PlatformTokenResolver } from '@/auth/platform-token-resolver.js';
+import { PlatformJWTProvider } from '../src/auth/platform-jwt-provider.js';
+import { PlatformTokenResolver } from '../src/auth/platform-token-resolver.js';
 ```
 
 ## Requirements
@@ -97,3 +70,4 @@ Scripts should:
 4. Provide clear output and progress indicators
 5. Exit with appropriate exit codes (0 for success, 1 for error)
 6. Use TypeScript for type safety
+7. Use `node:` prefix for built-in modules (e.g., `node:fs`, `node:child_process`)
