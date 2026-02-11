@@ -58,6 +58,7 @@ const wrappedServer = wrapServer({
   tokenResolver,
   resourceType: 'remember',
   transport: {
+    cors: false,
     type: 'sse',
     port: config.server.port,
     host: '0.0.0.0',
