@@ -6,8 +6,8 @@
  * This server wraps remember-mcp with authentication and multi-tenancy support.
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { wrapServer } from '@prmichaelsen/mcp-auth';
+import { createServer as createRememberServer } from '@prmichaelsen/remember-mcp/factory';
 import { PlatformJWTProvider } from './auth/platform-jwt-provider.js';
 import { PlatformTokenResolver } from './auth/platform-token-resolver.js';
 
@@ -50,30 +50,10 @@ const tokenResolver = new PlatformTokenResolver({
   cacheTtl: 300000 // 5 minutes
 });
 
-// TODO: Replace with actual remember-mcp server factory in Milestone 3
-// For now, create a placeholder server factory
-function createPlaceholderServer(accessToken: string, userId: string): Server {
-  const server = new Server({
-    name: 'remember-mcp-server',
-    version: '1.0.0'
-  }, {
-    capabilities: {
-      tools: {}
-    }
-  });
-  
-  // TODO: Import and use createRememberServer from @prmichaelsen/remember-mcp
-  // TODO: Ensure tools are prefixed with 'remember_'
-  
-  console.log(`Created placeholder server for user: ${userId}`);
-  
-  return server;
-}
-
 // Wrap server with authentication
 const wrappedServer = wrapServer({
   serverFactory: (accessToken: string, userId: string) => {
-    return createPlaceholderServer(accessToken, userId);
+    return createRememberServer(accessToken, userId);
   },
   authProvider,
   tokenResolver,

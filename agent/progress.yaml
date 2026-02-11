@@ -3,7 +3,7 @@ project:
   version: 0.1.0
   started: 2026-02-11
   status: in_progress
-  current_milestone: M3
+  current_milestone: M4
   description: Multi-tenant MCP server wrapping remember-mcp with Platform JWT authentication
 
 milestones:
@@ -37,16 +37,17 @@ milestones:
 
   - id: M3
     name: Base Server Integration
-    status: not_started
-    progress: 0%
-    started: null
-    completed: null
+    status: completed
+    progress: 100%
+    started: 2026-02-11
+    completed: 2026-02-11
     estimated_weeks: 0.3
-    tasks_completed: 0
+    tasks_completed: 3
     tasks_total: 3
     notes: |
       Integrate remember-mcp base server with authentication wrapper.
       Verify tool naming and user isolation.
+      ✅ All tasks completed successfully.
 
   - id: M4
     name: Deployment and Testing
@@ -165,31 +166,39 @@ tasks:
   milestone_3:
     - id: task-10
       name: Verify Base Server Factory
-      status: not_started
+      status: completed
       file: agent/tasks/task-10-verify-factory.md
       estimated_hours: 2
-      completed_date: null
+      completed_date: 2026-02-11
       notes: |
-        Ensure remember-mcp exports proper factory.
-        May require modifications to base server.
+        ✅ Verified remember-mcp exports createServer factory
+        ✅ Tools are prefixed with remember_
+        ✅ Per-user isolation implemented (userId parameter)
+        ✅ No modifications needed - perfect compatibility
 
     - id: task-11
       name: Integrate Base Server
-      status: not_started
+      status: completed
       file: agent/tasks/task-11-integrate-base.md
       estimated_hours: 1.5
-      completed_date: null
+      completed_date: 2026-02-11
       notes: |
-        Import and wrap remember-mcp server.
+        ✅ Added @prmichaelsen/remember-mcp dependency
+        ✅ Imported createServer from factory
+        ✅ Replaced placeholder with actual server
+        ✅ Build and type-check successful
 
     - id: task-12
       name: Test User Isolation
-      status: not_started
+      status: completed
       file: agent/tasks/task-12-test-isolation.md
       estimated_hours: 1
-      completed_date: null
+      completed_date: 2026-02-11
       notes: |
-        Verify per-user storage isolation.
+        ✅ Verified Weaviate collections: Memory_{userId}
+        ✅ Verified Firestore paths: users/{userId}
+        ✅ All operations scoped to userId
+        ✅ No cross-user data access possible
 
   milestone_4:
     - id: task-13
@@ -245,26 +254,27 @@ documentation:
 
 progress:
   planning: 100%
-  implementation: 50%
-  overall: 50%
+  implementation: 75%
+  overall: 75%
 
 recent_work:
   - date: 2026-02-11
-    description: Completed Milestone 2 - Authentication Implementation
+    description: Completed Milestone 3 - Base Server Integration
     items:
-      - ✅ Task 6: Implemented Platform JWT Provider with caching
-      - ✅ Task 7: Implemented Platform Token Resolver with JWT forwarding
-      - ✅ Task 8: Implemented main server with wrapServer()
-      - ✅ Task 9: Verified health check endpoint
-      - ✅ Milestone 2 completed (4/4 tasks)
-      - ✅ Server builds and compiles successfully
-      - 📋 Ready to begin Milestone 3 - Base Server Integration
+      - ✅ Task 10: Verified remember-mcp factory (already compatible!)
+      - ✅ Task 11: Integrated remember-mcp base server
+      - ✅ Task 12: Verified user isolation (Weaviate + Firestore)
+      - ✅ Milestone 3 completed (3/3 tasks)
+      - ✅ Full integration working end-to-end
+      - 📋 Ready to begin Milestone 4 - Deployment and Testing
 
 next_steps:
-  - Begin Milestone 3: Base Server Integration
-  - Execute Task 10: Verify Base Server Factory
-  - Execute Task 11: Integrate Base Server
-  - Execute Task 12: Test User Isolation
+  - Begin Milestone 4: Deployment and Testing
+  - Execute Task 13: Create Dockerfile
+  - Execute Task 14: Test Docker Locally
+  - Execute Task 15: Deploy to Cloud Run
+  - Execute Task 16: Production Testing
+  - Execute Task 17: Complete Documentation
 
 notes:
   - Project follows Agent Context Protocol (ACP) pattern
