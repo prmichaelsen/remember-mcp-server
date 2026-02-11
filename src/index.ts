@@ -49,11 +49,12 @@ const wrappedServer = wrapServer({
   authProvider,
   resourceType: 'remember',
   transport: {
-    cors: true,
     type: 'sse',
     port: config.server.port,
     host: '0.0.0.0',
-    basePath: '/mcp'
+    basePath: '/mcp',
+    cors: true,
+    corsOrigin: process.env.CORS_ORIGIN || 'https://agentbase.me'
   },
   middleware: {
     rateLimit: {
