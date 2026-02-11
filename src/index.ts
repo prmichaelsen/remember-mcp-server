@@ -41,20 +41,12 @@ const authProvider = new PlatformJWTProvider({
   cacheTtl: 60000 // 60 seconds
 });
 
-// For static servers, use SimpleTokenResolver
-// Reads from REMEMBER_ACCESS_TOKEN env var (set in cloudbuild.yaml)
-const tokenResolver = new SimpleTokenResolver({
-  throwOnMissing: false,
-  validateToken: false
-});
-
 // Wrap server with authentication
 const wrappedServer = wrapServer({
   serverFactory: (accessToken: string, userId: string) => {
     return createRememberServer(accessToken, userId);
   },
   authProvider,
-  tokenResolver,
   resourceType: 'remember',
   transport: {
     cors: false,
