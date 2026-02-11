@@ -1,0 +1,7 @@
+- /home/prmicahelsen/agentbase - Example impl of an auth wrappable server
+- /home/prmicahelsen/agentbase-mcp-server - Example impl of an auth wrapped server
+- /home/prmichaelsen/mcp-auth - Auth wrap library
+- /home/prmichaelsen/agentbase.me - Example tenant platform
+- /home/prmichaelsen/firebase-admin-sdk-v8 - Our admin SDK library
+- /home/prmichaelsen/remember-mcp - The related MCP server for this project
+- This project - Will wrap remember-mcp with mcp-auth and integrati with agentbase.me
