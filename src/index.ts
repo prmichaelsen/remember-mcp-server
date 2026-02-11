@@ -41,12 +41,11 @@ const authProvider = new PlatformJWTProvider({
   cacheTtl: 60000 // 60 seconds
 });
 
-// For static servers that don't need OAuth tokens
-// remember-mcp only uses userId for data isolation, not accessToken
-// SimpleTokenResolver will return null for 'remember' since no env var is set
+// For static servers, use SimpleTokenResolver
+// Reads from REMEMBER_ACCESS_TOKEN env var (set in cloudbuild.yaml)
 const tokenResolver = new SimpleTokenResolver({
-  throwOnMissing: false, // Don't throw error if token not found
-  validateToken: false    // Don't validate token format
+  throwOnMissing: false,
+  validateToken: false
 });
 
 // Wrap server with authentication

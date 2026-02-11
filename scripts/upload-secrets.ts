@@ -3,12 +3,13 @@
 /**
  * Upload secrets from .env to Google Cloud Secret Manager
  *
- * Usage: npx tsx scripts/upload-secrets.ts [--project PROJECT_ID] [--env-file .env]
+ * Usage: npx tsx scripts/upload-secrets.ts [--service SERVICE_NAME] [--project PROJECT_ID] [--env-file .env]
  *
  * This script:
  * 1. Reads secrets from .env file
  * 2. Creates or updates each secret in Google Cloud Secret Manager
- * 3. Skips non-secret environment variables (like NODE_ENV, PORT)
+ * 3. Prefixes secret names with service name to avoid conflicts
+ * 4. Skips non-secret environment variables (like NODE_ENV, PORT)
  */
 
 import { readFileSync } from 'node:fs';
@@ -18,15 +19,27 @@ import { execSync } from 'node:child_process';
 const args = process.argv.slice(2);
 let projectId: string | null = null;
 let envFile = '.env';
+let serviceName: string | null = null;
 
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--project' && args[i + 1]) {
+  if (args[i] === '--service' && args[i + 1]) {
+    serviceName = args[i + 1];
+    i++;
+  } else if (args[i] === '--project' && args[i + 1]) {
     projectId = args[i + 1];
     i++;
   } else if (args[i] === '--env-file' && args[i + 1]) {
     envFile = args[i + 1];
     i++;
   }
+}
+
+// Validate required arguments
+if (!serviceName) {
+  console.error('Error: --service flag is required');
+  console.error('Usage: npx tsx scripts/upload-secrets.ts --service SERVICE_NAME [--project PROJECT_ID] [--env-file .env]');
+  console.error('Example: npx tsx scripts/upload-secrets.ts --service remember');
+  process.exit(1);
 }
 
 // Get project ID from gcloud if not provided
@@ -115,7 +128,8 @@ let successCount = 0;
 let errorCount = 0;
 
 for (const [key, value] of Object.entries(secrets)) {
-  const secretName = key.toLowerCase().replace(/_/g, '-');
+  // Prefix secret name with service name to avoid conflicts
+  const secretName = `${serviceName}-${key.toLowerCase().replace(/_/g, '-')}`;
   
   try {
     // Check if secret exists
@@ -162,9 +176,9 @@ console.log(`   📦 Total: ${Object.keys(secrets).length}`);
 
 if (successCount > 0) {
   console.log(`\n💡 To use these secrets in Cloud Run:`);
-  console.log(`   gcloud run deploy SERVICE_NAME \\`);
+  console.log(`   gcloud run deploy ${serviceName}-mcp-server \\`);
   Object.keys(secrets).forEach(key => {
-    const secretName = key.toLowerCase().replace(/_/g, '-');
+    const secretName = `${serviceName}-${key.toLowerCase().replace(/_/g, '-')}`;
     console.log(`     --update-secrets=${key}=${secretName}:latest \\`);
   });
 }

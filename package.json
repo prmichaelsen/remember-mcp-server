@@ -24,13 +24,13 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@prmichaelsen/mcp-auth": "^4.0.0",
+    "@prmichaelsen/mcp-auth": "^7.0.3",
     "@prmichaelsen/remember-mcp": "^0.1.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^22.10.2",
     "tsx": "^4.7.0",
     "typescript": "^5.7.2"
   }

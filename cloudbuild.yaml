@@ -35,8 +35,8 @@ steps:
       - '--memory=512Mi'
       - '--cpu=1'
       - '--timeout=60s'
-      - '--set-env-vars=NODE_ENV=production,PLATFORM_URL=https://agentbase.me'
-      - '--update-secrets=PLATFORM_SERVICE_TOKEN=platform-service-token:latest'
+      - '--set-env-vars=NODE_ENV=production,PLATFORM_URL=https://agentbase.me,REMEMBER_ACCESS_TOKEN=static-server'
+      - '--update-secrets=PLATFORM_SERVICE_TOKEN=remember-platform-service-token:latest'
 
 images:
   - 'gcr.io/$PROJECT_ID/remember-mcp-server:$COMMIT_SHA'
