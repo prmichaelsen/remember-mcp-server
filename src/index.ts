@@ -49,7 +49,7 @@ const wrappedServer = wrapServer({
   authProvider,
   resourceType: 'remember',
   transport: {
-    cors: false,
+    cors: true,
     type: 'sse',
     port: config.server.port,
     host: '0.0.0.0',
