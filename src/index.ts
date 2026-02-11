@@ -43,8 +43,10 @@ const authProvider = new PlatformJWTProvider({
 
 // For static servers that don't need OAuth tokens
 // remember-mcp only uses userId for data isolation, not accessToken
+// SimpleTokenResolver will return null for 'remember' since no env var is set
 const tokenResolver = new SimpleTokenResolver({
-  token: 'static-server' // Dummy token, not used by remember-mcp
+  throwOnMissing: false, // Don't throw error if token not found
+  validateToken: false    // Don't validate token format
 });
 
 // Wrap server with authentication
