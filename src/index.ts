@@ -6,10 +6,9 @@
  * This server wraps remember-mcp with authentication and multi-tenancy support.
  */
 
-import { wrapServer } from '@prmichaelsen/mcp-auth';
+import { wrapServer, SimpleTokenResolver } from '@prmichaelsen/mcp-auth';
 import { createServer as createRememberServer } from '@prmichaelsen/remember-mcp/factory';
 import { PlatformJWTProvider } from './auth/platform-jwt-provider.js';
-import { PlatformTokenResolver } from './auth/platform-token-resolver.js';
 
 // Configuration
 const config = {
@@ -42,12 +41,10 @@ const authProvider = new PlatformJWTProvider({
   cacheTtl: 60000 // 60 seconds
 });
 
-// Create token resolver
-const tokenResolver = new PlatformTokenResolver({
-  platformUrl: config.platform.url,
-  authProvider: authProvider,
-  cacheTokens: true,
-  cacheTtl: 300000 // 5 minutes
+// For static servers that don't need OAuth tokens
+// remember-mcp only uses userId for data isolation, not accessToken
+const tokenResolver = new SimpleTokenResolver({
+  token: 'static-server' // Dummy token, not used by remember-mcp
 });
 
 // Wrap server with authentication
