@@ -147,6 +147,7 @@ for (const [key, value] of Object.entries(secrets)) {
     if (secretExists) {
       // Add new version to existing secret
       console.log(`📝 Updating ${secretName}...`);
+      // Use single quotes to prevent shell expansion
       execSync(`echo -n '${value}' | gcloud secrets versions add ${secretName} --data-file=- --project=${projectId}`, {
         stdio: 'pipe'
       });
@@ -154,6 +155,7 @@ for (const [key, value] of Object.entries(secrets)) {
     } else {
       // Create new secret
       console.log(`🆕 Creating ${secretName}...`);
+      // Use single quotes to prevent shell expansion
       execSync(`echo -n '${value}' | gcloud secrets create ${secretName} --data-file=- --project=${projectId}`, {
         stdio: 'pipe'
       });
