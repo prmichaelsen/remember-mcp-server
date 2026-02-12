@@ -272,36 +272,41 @@ progress:
   overall: 100%
 
 recent_work:
-  - date: 2026-02-11
-    description: 🎉 PROJECT COMPLETE - Production deployment successful!
+  - date: 2026-02-12
+    description: Final deployment configuration and secret mapping
     items:
-      - ✅ Task 15: Deployed to Cloud Run via Cloud Build
-      - ✅ Fixed token resolution (SimpleTokenResolver for static server)
-      - ✅ Task 16: Production testing verified
-      - ✅ Task 17: Documentation complete
-      - ✅ Created scripts/upload-secrets.ts for secret management
-      - ✅ All 4 milestones completed (17/17 tasks)
-      - 🚀 Server live at https://remember-mcp-server-dit6gawkbq-uc.a.run.app
+      - ✅ Upgraded to mcp-auth@7.0.3 (optional tokenResolver)
+      - ✅ Upgraded to remember-mcp@0.2.1
+      - ✅ Added CORS configuration (corsOrigin)
+      - ✅ Mapped all 14 critical secrets with remember- prefix
+      - ✅ Created upload-secrets.ts with --service flag
+      - ✅ Removed SimpleTokenResolver workaround
+      - 🔧 Debugging database initialization issues
 
 next_steps:
-  - Project complete! Server is production-ready
-  - Monitor usage and performance
-  - Add new features as needed
+  - Debug Weaviate/Firebase initialization errors
+  - Verify all secrets are correctly mapped
+  - Complete production testing
+  - Monitor first successful tool execution
 
 notes:
   - Project follows Agent Context Protocol (ACP) pattern
   - Bootstrap pattern from agent/patterns/bootstrap.md
-  - Base server (remember-mcp) may need factory export added
+  - Static server mode (no OAuth tokens needed)
   - Platform integration with agentbase.me
   - Tool naming convention: remember_{tool_name}
+  - Secrets prefixed with 'remember-' to avoid conflicts
 
 current_blockers:
-  - None - project complete!
+  - Database initialization failing in production
+  - Need to verify secret mappings are correct
+  - May need to check Weaviate/Firebase connectivity
 
 deployment:
   endpoint: https://remember-mcp-server-dit6gawkbq-uc.a.run.app
   region: us-central1
-  status: active
-  image: gcr.io/com-f5-parm/remember-mcp-server:ca2fa5f
-  commit: ca2fa5f
-  deployed_at: 2026-02-11T21:11:00Z
+  status: debugging
+  image: gcr.io/com-f5-parm/remember-mcp-server:ffb53bd
+  commit: ffb53bd
+  deployed_at: 2026-02-12T01:43:00Z
+  secrets_mapped: 14
