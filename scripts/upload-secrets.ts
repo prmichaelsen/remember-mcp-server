@@ -147,14 +147,14 @@ for (const [key, value] of Object.entries(secrets)) {
     if (secretExists) {
       // Add new version to existing secret
       console.log(`📝 Updating ${secretName}...`);
-      execSync(`echo -n "${value}" | gcloud secrets versions add ${secretName} --data-file=- --project=${projectId}`, {
+      execSync(`echo -n '${value}' | gcloud secrets versions add ${secretName} --data-file=- --project=${projectId}`, {
         stdio: 'pipe'
       });
       console.log(`✅ Updated ${secretName}`);
     } else {
       // Create new secret
       console.log(`🆕 Creating ${secretName}...`);
-      execSync(`echo -n "${value}" | gcloud secrets create ${secretName} --data-file=- --project=${projectId}`, {
+      execSync(`echo -n '${value}' | gcloud secrets create ${secretName} --data-file=- --project=${projectId}`, {
         stdio: 'pipe'
       });
       console.log(`✅ Created ${secretName}`);
