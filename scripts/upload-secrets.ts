@@ -12,8 +12,10 @@
  * 4. Skips non-secret environment variables (like NODE_ENV, PORT)
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -144,22 +146,31 @@ for (const [key, value] of Object.entries(secrets)) {
       // Secret doesn't exist, will create it
     }
     
-    if (secretExists) {
-      // Add new version to existing secret
-      console.log(`📝 Updating ${secretName}...`);
-      // Use single quotes to prevent shell expansion
-      execSync(`echo -n '${value}' | gcloud secrets versions add ${secretName} --data-file=- --project=${projectId}`, {
-        stdio: 'pipe'
-      });
-      console.log(`✅ Updated ${secretName}`);
-    } else {
-      // Create new secret
-      console.log(`🆕 Creating ${secretName}...`);
-      // Use single quotes to prevent shell expansion
-      execSync(`echo -n '${value}' | gcloud secrets create ${secretName} --data-file=- --project=${projectId}`, {
-        stdio: 'pipe'
-      });
-      console.log(`✅ Created ${secretName}`);
+    // Write value to temp file to avoid shell escaping issues
+    const tempFile = join(tmpdir(), `secret-${Date.now()}.txt`);
+    try {
+      writeFileSync(tempFile, value, 'utf-8');
+      
+      if (secretExists) {
+        // Add new version to existing secret
+        console.log(`📝 Updating ${secretName}...`);
+        execSync(`gcloud secrets versions add ${secretName} --data-file=${tempFile} --project=${projectId}`, {
+          stdio: 'pipe'
+        });
+        console.log(`✅ Updated ${secretName}`);
+      } else {
+        // Create new secret
+        console.log(`🆕 Creating ${secretName}...`);
+        execSync(`gcloud secrets create ${secretName} --data-file=${tempFile} --project=${projectId}`, {
+          stdio: 'pipe'
+        });
+        console.log(`✅ Created ${secretName}`);
+      }
+    } finally {
+      // Clean up temp file
+      try {
+        unlinkSync(tempFile);
+      } catch {}
     }
     
     successCount++;
