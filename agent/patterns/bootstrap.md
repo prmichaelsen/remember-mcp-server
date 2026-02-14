@@ -2,28 +2,56 @@
 
 ## Overview
 
-This document describes how to replicate the agentbase-mcp-server pattern for **any MCP server** that you want to make multi-tenant with Platform JWT authentication.
+This document describes how to replicate the multi-tenant MCP server pattern for **any MCP server** that you want to make multi-tenant with Platform JWT authentication.
 
-## Prerequisites
+There are **two implementation patterns**:
+
+1. **Dynamic Pattern** (with tokenResolver) - For servers that need OAuth tokens from external APIs
+2. **Static Pattern** (no tokenResolver) - For servers with static credentials or self-contained storage
+
+## Pattern Selection Guide
+
+### Use Static Pattern (No TokenResolver) When:
+
+✅ Server manages its own storage (database, vector store, etc.)  
+✅ Credentials are static environment variables (API keys, connection strings)  
+✅ No per-user OAuth tokens needed  
+✅ Examples: remember-mcp, note-taking servers, internal tools
+
+**Implementation**: Only requires `authProvider`, no `tokenResolver`
+
+### Use Dynamic Pattern (With TokenResolver) When:
+
+✅ Server needs per-user OAuth tokens from external APIs  
+✅ Users connect their own accounts (GitHub, Slack, Instagram, etc.)  
+✅ Tokens are stored in platform database  
+✅ Examples: github-mcp, slack-mcp, instagram-mcp
+
+**Implementation**: Requires both `authProvider` and `tokenResolver`
+
+---
+
+## Static Pattern Implementation (remember-mcp Example)
+
+This is the **simpler pattern** for servers that don't need per-user OAuth tokens.
+
+### Prerequisites
 
 Your base MCP server must export a **server factory function**:
 
 ```typescript
 export function createYourServer(
-  accessToken: string,
+  accessToken: string,  // Can be empty string for static servers
   userId: string,
   options?: ServerOptions
-): Server
+): Server | Promise<Server>
 ```
 
 This factory should:
-- Accept an access token for the external API
-- Accept a userId for tracking
+- Accept a userId for per-user isolation
 - Return a configured MCP `Server` instance
 - Register all tools internally
-- **Tool Naming**: Tools must be named `{resourceType}_{tool_name}` (e.g., `instagram_get_profile`)
-
-## Step-by-Step Bootstrap
+- **Tool Naming**: Tools must be named `{resourceType}_{tool_name}` (e.g., `remember_store`)
 
 ### Step 1: Create New Multi-Tenant Server Project
 
@@ -55,14 +83,12 @@ npm install --save-dev \
 your-mcp-server/
 ├── src/
 │   ├── index.ts                    # Main server
-│   ├── auth/
-│   │   ├── platform-jwt-provider.ts    # Platform JWT validation
-│   │   └── platform-token-resolver.ts  # Platform API integration
-├── agent/
-│   ├── integration-plan.md
-│   ├── progress.yaml
-│   ├── TOOL-NAMING-CONVENTION.md
-│   └── tasks/
+│   └── auth/
+│       └── platform-jwt-provider.ts    # Platform JWT validation
+├── agent/                          # Agent Context Protocol docs
+├── scripts/                        # Utility scripts
+│   ├── README.md
+│   └── upload-secrets.ts          # Secret management
 ├── package.json
 ├── tsconfig.json
 ├── Dockerfile
@@ -71,6 +97,8 @@ your-mcp-server/
 ├── .gitignore
 └── README.md
 ```
+
+**Note**: No `platform-token-resolver.ts` needed for static pattern!
 
 ### Step 4: Configure package.json
 
@@ -83,11 +111,14 @@ your-mcp-server/
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit",
+    "script": "tsx",
+    "script:upload-secrets": "tsx scripts/upload-secrets.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@prmichaelsen/mcp-auth": "^4.0.0",
+    "@prmichaelsen/mcp-auth": "^7.0.3",
     "@your-org/your-mcp-base": "^1.0.0",
     "jsonwebtoken": "^9.0.2"
   },
@@ -148,7 +179,6 @@ interface CachedAuthResult {
 export class PlatformJWTProvider implements AuthProvider {
   private config: PlatformJWTProviderConfig;
   private authCache = new Map<string, CachedAuthResult>();
-  public jwtTokenCache = new Map<string, string>();
   
   constructor(config: PlatformJWTProviderConfig) {
     this.config = config;
@@ -187,9 +217,6 @@ export class PlatformJWTProvider implements AuthProvider {
         audience: this.config.audience
       }) as { userId: string; email?: string };
       
-      // Store JWT for forwarding to credentials API
-      this.jwtTokenCache.set(decoded.userId, token);
-      
       const result: AuthResult = {
         authenticated: true,
         userId: decoded.userId,
@@ -216,20 +243,495 @@ export class PlatformJWTProvider implements AuthProvider {
     }
   }
   
-  getJWTToken(userId: string): string | undefined {
-    return this.jwtTokenCache.get(userId);
-  }
-  
   async cleanup(): Promise<void> {
     this.authCache.clear();
-    this.jwtTokenCache.clear();
   }
 }
 ```
 
-### Step 7: Create Platform Token Resolver
+### Step 7: Create Main Server (Static Pattern)
 
-**src/auth/platform-token-resolver.ts**:
+**src/index.ts**:
+
+```typescript
+#!/usr/bin/env node
+
+import { wrapServer } from '@prmichaelsen/mcp-auth';
+import { createServer as createYourServer } from '@your-org/your-mcp-base/factory';
+import { PlatformJWTProvider } from './auth/platform-jwt-provider.js';
+
+// Configuration
+const config = {
+  platform: {
+    url: process.env.PLATFORM_URL!,
+    serviceToken: process.env.PLATFORM_SERVICE_TOKEN!
+  },
+  server: {
+    port: parseInt(process.env.PORT || '8080')
+  }
+};
+
+// Validate required configuration
+if (!config.platform.serviceToken) {
+  console.error('Error: PLATFORM_SERVICE_TOKEN environment variable is required');
+  process.exit(1);
+}
+
+if (!config.platform.url) {
+  console.error('Error: PLATFORM_URL environment variable is required');
+  process.exit(1);
+}
+
+// Create auth provider
+const authProvider = new PlatformJWTProvider({
+  serviceToken: config.platform.serviceToken,
+  issuer: 'agentbase.me',
+  audience: 'mcp-server',
+  cacheResults: true,
+  cacheTtl: 60000 // 60 seconds
+});
+
+// Wrap server with authentication (NO tokenResolver for static pattern)
+const wrappedServer = wrapServer({
+  serverFactory: async (accessToken: string, userId: string) => {
+    // For static servers, accessToken is empty string
+    // Server uses environment variables for credentials
+    return await createYourServer(accessToken, userId);
+  },
+  authProvider,
+  // NO tokenResolver - static pattern!
+  resourceType: 'your-resource-type', // e.g., 'remember', 'notes', etc.
+  transport: {
+    type: 'sse',
+    port: config.server.port,
+    host: '0.0.0.0',
+    basePath: '/mcp',
+    cors: true,
+    corsOrigin: process.env.CORS_ORIGIN || 'https://agentbase.me'
+  },
+  middleware: {
+    rateLimit: {
+      enabled: true,
+      maxRequests: 100,
+      windowMs: 60 * 60 * 1000 // 1 hour
+    },
+    logging: {
+      enabled: true,
+      level: 'info'
+    }
+  }
+});
+
+// Start server
+async function main() {
+  try {
+    await wrappedServer.start();
+    console.log(`✅ Server started successfully`);
+    console.log(`📡 Listening on port ${config.server.port}`);
+    console.log(`🔗 Endpoint: http://0.0.0.0:${config.server.port}/mcp`);
+    console.log(`🏥 Health check: http://0.0.0.0:${config.server.port}/mcp/health`);
+    console.log(`🔐 Authentication: Platform JWT (agentbase.me)`);
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await wrappedServer.stop();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await wrappedServer.stop();
+  process.exit(0);
+});
+
+// Start the server
+main();
+```
+
+**Key Differences from Dynamic Pattern**:
+- ❌ No `PlatformTokenResolver` import
+- ❌ No `tokenResolver` in `wrapServer()` config
+- ✅ Server uses environment variables for credentials
+- ✅ `accessToken` parameter is empty string (unused)
+- ✅ Simpler implementation
+
+### Step 8: Create Environment Template
+
+**.env.example**:
+
+```env
+# Platform JWT (shared secret for JWT validation)
+PLATFORM_SERVICE_TOKEN=your-shared-secret
+
+# Platform API (for health checks, not credentials)
+PLATFORM_URL=https://agentbase.me
+
+# CORS Configuration
+CORS_ORIGIN=https://agentbase.me
+
+# Server Configuration
+PORT=8080
+NODE_ENV=development
+LOG_LEVEL=info
+
+# Your Service Credentials (static, not per-user)
+# Example for remember-mcp:
+WEAVIATE_REST_URL=https://your-weaviate.weaviate.network
+WEAVIATE_GRPC_URL=grpc://your-weaviate.weaviate.network:443
+WEAVIATE_API_KEY=your-api-key
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+OPENAI_EMBEDDINGS_API_KEY=sk-...
+EMBEDDINGS_PROVIDER=openai
+EMBEDDINGS_MODEL=text-embedding-3-small
+```
+
+### Step 9: Create Dockerfile
+
+**Dockerfile**:
+
+```dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy source code
+COPY src ./src
+
+# Build TypeScript
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Clear npm cache and install production dependencies only
+RUN npm cache clean --force && npm ci --omit=dev
+
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "fetch('http://localhost:8080/mcp/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
+# Start server
+CMD ["node", "dist/index.js"]
+```
+
+### Step 10: Create Cloud Build Configuration
+
+**cloudbuild.yaml**:
+
+```yaml
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/your-mcp-server:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/your-mcp-server:latest'
+      - '.'
+  
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/your-mcp-server:$COMMIT_SHA'
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/your-mcp-server:latest'
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'your-mcp-server'
+      - '--image=gcr.io/$PROJECT_ID/your-mcp-server:$COMMIT_SHA'
+      - '--platform=managed'
+      - '--region=us-central1'
+      - '--allow-unauthenticated'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--timeout=60s'
+      - '--set-env-vars=NODE_ENV=production,PLATFORM_URL=https://agentbase.me'
+      - '--update-secrets=PLATFORM_SERVICE_TOKEN=your-platform-service-token:latest,CORS_ORIGIN=your-cors-origin:latest,YOUR_API_KEY=your-api-key:latest'
+
+images:
+  - 'gcr.io/$PROJECT_ID/your-mcp-server:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/your-mcp-server:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+```
+
+### Step 11: Create Secret Upload Script
+
+**scripts/upload-secrets.ts**:
+
+```typescript
+#!/usr/bin/env tsx
+
+/**
+ * Upload secrets from .env to Google Cloud Secret Manager
+ *
+ * Usage: npx tsx scripts/upload-secrets.ts --service SERVICE_NAME [--project PROJECT_ID] [--env-file .env]
+ */
+
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+let projectId: string | null = null;
+let envFile = '.env';
+let serviceName: string | null = null;
+
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--service' && args[i + 1]) {
+    serviceName = args[i + 1];
+    i++;
+  } else if (args[i] === '--project' && args[i + 1]) {
+    projectId = args[i + 1];
+    i++;
+  } else if (args[i] === '--env-file' && args[i + 1]) {
+    envFile = args[i + 1];
+    i++;
+  }
+}
+
+// Validate required arguments
+if (!serviceName) {
+  console.error('Error: --service flag is required');
+  console.error('Usage: npx tsx scripts/upload-secrets.ts --service SERVICE_NAME [--project PROJECT_ID] [--env-file .env]');
+  console.error('Example: npx tsx scripts/upload-secrets.ts --service remember');
+  process.exit(1);
+}
+
+// Get project ID from gcloud if not provided
+if (!projectId) {
+  try {
+    projectId = execSync('gcloud config get-value project', { encoding: 'utf-8' }).trim();
+    console.log(`Using project from gcloud config: ${projectId}`);
+  } catch (error) {
+    console.error('Error: Could not determine project ID');
+    console.error('Please specify with --project flag or set default project with: gcloud config set project PROJECT_ID');
+    process.exit(1);
+  }
+}
+
+// Variables to skip (not secrets)
+const SKIP_VARS = new Set([
+  'NODE_ENV',
+  'PORT',
+  'LOG_LEVEL',
+  'PLATFORM_URL'  // Public URL, not a secret
+]);
+
+// Read and parse .env file
+console.log(`\nReading secrets from: ${envFile}`);
+let envContent: string;
+try {
+  envContent = readFileSync(envFile, 'utf-8');
+} catch (error) {
+  console.error(`Error: Could not read ${envFile}`);
+  console.error((error as Error).message);
+  process.exit(1);
+}
+
+// Parse environment variables
+const secrets: Record<string, string> = {};
+const lines = envContent.split('\n');
+
+for (const line of lines) {
+  const trimmed = line.trim();
+  
+  // Skip empty lines and comments
+  if (!trimmed || trimmed.startsWith('#')) {
+    continue;
+  }
+  
+  // Parse KEY=VALUE
+  const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+  if (match) {
+    const [, key, value] = match;
+    
+    // Skip non-secret variables
+    if (SKIP_VARS.has(key)) {
+      console.log(`⏭️  Skipping ${key} (not a secret)`);
+      continue;
+    }
+    
+    // Remove quotes if present
+    let cleanValue = value.trim();
+    if ((cleanValue.startsWith('"') && cleanValue.endsWith('"')) ||
+        (cleanValue.startsWith("'") && cleanValue.endsWith("'"))) {
+      cleanValue = cleanValue.slice(1, -1);
+    }
+    
+    if (cleanValue) {
+      secrets[key] = cleanValue;
+    }
+  }
+}
+
+if (Object.keys(secrets).length === 0) {
+  console.log('\n⚠️  No secrets found to upload');
+  process.exit(0);
+}
+
+console.log(`\nFound ${Object.keys(secrets).length} secrets to upload`);
+console.log(`Uploading to project: ${projectId}`);
+console.log('─'.repeat(60));
+
+// Upload each secret
+let successCount = 0;
+let errorCount = 0;
+
+for (const [key, value] of Object.entries(secrets)) {
+  // Prefix secret name with service name to avoid conflicts
+  const secretName = `${serviceName}-${key.toLowerCase().replace(/_/g, '-')}`;
+  
+  try {
+    // Check if secret exists
+    let secretExists = false;
+    try {
+      execSync(`gcloud secrets describe ${secretName} --project=${projectId}`, { 
+        stdio: 'pipe',
+        encoding: 'utf-8'
+      });
+      secretExists = true;
+    } catch {
+      // Secret doesn't exist, will create it
+    }
+    
+    // Write value to temp file to avoid shell escaping issues
+    const tempFile = join(tmpdir(), `secret-${Date.now()}.txt`);
+    try {
+      writeFileSync(tempFile, value, 'utf-8');
+      
+      if (secretExists) {
+        // Add new version to existing secret
+        console.log(`📝 Updating ${secretName}...`);
+        execSync(`gcloud secrets versions add ${secretName} --data-file=${tempFile} --project=${projectId}`, {
+          stdio: 'pipe'
+        });
+        console.log(`✅ Updated ${secretName}`);
+      } else {
+        // Create new secret
+        console.log(`🆕 Creating ${secretName}...`);
+        execSync(`gcloud secrets create ${secretName} --data-file=${tempFile} --project=${projectId}`, {
+          stdio: 'pipe'
+        });
+        console.log(`✅ Created ${secretName}`);
+      }
+    } finally {
+      // Clean up temp file
+      try {
+        unlinkSync(tempFile);
+      } catch {}
+    }
+    
+    successCount++;
+  } catch (error) {
+    console.error(`❌ Failed to upload ${secretName}`);
+    console.error(`   ${(error as Error).message}`);
+    errorCount++;
+  }
+}
+
+console.log('─'.repeat(60));
+console.log(`\n📊 Summary:`);
+console.log(`   ✅ Success: ${successCount}`);
+console.log(`   ❌ Failed: ${errorCount}`);
+console.log(`   📦 Total: ${Object.keys(secrets).length}`);
+
+if (successCount > 0) {
+  console.log(`\n💡 Secret names for Cloud Run deployment:`);
+  Object.keys(secrets).forEach(key => {
+    const secretName = `${serviceName}-${key.toLowerCase().replace(/_/g, '-')}`;
+    console.log(`   ${key}=${secretName}:latest`);
+  });
+}
+
+process.exit(errorCount > 0 ? 1 : 0);
+```
+
+**scripts/README.md**:
+
+```markdown
+# Utility Scripts
+
+This directory contains TypeScript utility scripts for deployment and management.
+
+## Available Scripts
+
+### upload-secrets.ts
+
+Uploads secrets from `.env` file to Google Cloud Secret Manager with service-specific prefixes.
+
+**Usage:**
+\`\`\`bash
+# Upload secrets with service prefix
+npx tsx scripts/upload-secrets.ts --service remember
+
+# Specify project
+npx tsx scripts/upload-secrets.ts --service remember --project my-project-id
+
+# Use different env file
+npx tsx scripts/upload-secrets.ts --service remember --env-file .env.production
+\`\`\`
+
+**Features:**
+- Prefixes secret names with service name (e.g., `remember-weaviate-api-key`)
+- Skips non-secret variables (NODE_ENV, PORT, PLATFORM_URL)
+- Creates or updates secrets automatically
+- Provides Cloud Run deployment command with all secrets
+
+## Requirements
+
+- Google Cloud SDK (`gcloud`) installed and configured
+- Authenticated with Google Cloud (`gcloud auth login`)
+- Appropriate permissions to create/update secrets
+```
+
+---
+
+## Dynamic Pattern Implementation (OAuth Tokens)
+
+For servers that need per-user OAuth tokens, add the `PlatformTokenResolver`:
+
+### Additional File: src/auth/platform-token-resolver.ts
 
 ```typescript
 import type {
@@ -238,10 +740,11 @@ import type {
   CredentialsAPIHeaders,
   TenantAPIErrorResponse
 } from '@prmichaelsen/mcp-auth';
+import type { PlatformJWTProvider } from './platform-jwt-provider.js';
 
 export interface PlatformTokenResolverConfig {
   platformUrl: string;
-  authProvider: PlatformJWTProvider;  // Reference to auth provider for JWT access
+  authProvider: PlatformJWTProvider;
   cacheTokens?: boolean;
   cacheTtl?: number;
 }
@@ -282,7 +785,7 @@ export class PlatformTokenResolver implements ResourceTokenResolver {
         return null;
       }
       
-      // Call platform API with JWT (not service token)
+      // Call platform API with JWT
       const url = `${this.config.platformUrl}/api/credentials/${resourceType}`;
       const headers: CredentialsAPIHeaders = {
         'Authorization': `Bearer ${jwtToken}`,
@@ -338,41 +841,19 @@ export class PlatformTokenResolver implements ResourceTokenResolver {
 }
 ```
 
-### Step 8: Create Main Server
-
-**src/index.ts**:
+### Modified Main Server (Dynamic Pattern)
 
 ```typescript
 #!/usr/bin/env node
 
 import { wrapServer } from '@prmichaelsen/mcp-auth';
-import { createYourServer } from '@your-org/your-mcp-base/factory';
+import { createServer as createYourServer } from '@your-org/your-mcp-base/factory';
 import { PlatformJWTProvider } from './auth/platform-jwt-provider.js';
 import { PlatformTokenResolver } from './auth/platform-token-resolver.js';
 
-// Configuration
-const config = {
-  platform: {
-    url: process.env.PLATFORM_URL!,
-    serviceToken: process.env.PLATFORM_SERVICE_TOKEN!
-  },
-  server: {
-    port: parseInt(process.env.PORT || '8080')
-  }
-};
+// ... config and validation ...
 
-// Validate
-if (!config.platform.serviceToken) {
-  console.error('Error: PLATFORM_SERVICE_TOKEN required');
-  process.exit(1);
-}
-
-if (!config.platform.url) {
-  console.error('Error: PLATFORM_URL required');
-  process.exit(1);
-}
-
-// Create providers
+// Create auth provider
 const authProvider = new PlatformJWTProvider({
   serviceToken: config.platform.serviceToken,
   issuer: 'agentbase.me',
@@ -381,26 +862,30 @@ const authProvider = new PlatformJWTProvider({
   cacheTtl: 60000
 });
 
+// Create token resolver (DYNAMIC PATTERN)
 const tokenResolver = new PlatformTokenResolver({
   platformUrl: config.platform.url,
-  authProvider: authProvider,  // Pass auth provider reference
+  authProvider: authProvider,
   cacheTokens: true,
   cacheTtl: 300000
 });
 
-// Wrap server
+// Wrap server with authentication AND token resolution
 const wrappedServer = wrapServer({
-  serverFactory: (accessToken: string, userId: string) => {
-    return createYourServer(accessToken, userId);
+  serverFactory: async (accessToken: string, userId: string) => {
+    // accessToken is fetched from platform API per-user
+    return await createYourServer(accessToken, userId);
   },
   authProvider,
-  tokenResolver,
-  resourceType: 'your-resource-type', // e.g., 'github', 'slack', etc.
+  tokenResolver,  // ADD tokenResolver for dynamic pattern
+  resourceType: 'github', // Must match credentials API endpoint
   transport: {
     type: 'sse',
     port: config.server.port,
     host: '0.0.0.0',
-    basePath: '/mcp'
+    basePath: '/mcp',
+    cors: true,
+    corsOrigin: process.env.CORS_ORIGIN || 'https://agentbase.me'
   },
   middleware: {
     rateLimit: {
@@ -415,165 +900,32 @@ const wrappedServer = wrapServer({
   }
 });
 
-// Start
-async function main() {
-  await wrappedServer.start();
-  console.log(`Server running on port ${config.server.port}`);
-  console.log(`Endpoint: http://0.0.0.0:${config.server.port}/mcp`);
-}
-
-process.on('SIGINT', async () => {
-  await wrappedServer.stop();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await wrappedServer.stop();
-  process.exit(0);
-});
-
-main();
+// ... rest of server startup ...
 ```
 
-### Step 9: Create Dockerfile
-
-**Dockerfile**:
-
-```dockerfile
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
-
-# Install ALL dependencies
-RUN npm ci
-
-# Copy source
-COPY src ./src
-
-# Build
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies only
-RUN npm ci --omit=dev
-
-# Copy built files
-COPY --from=builder /app/dist ./dist
-
-EXPOSE 8080
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "fetch('http://localhost:8080/mcp/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
-
-CMD ["node", "dist/index.js"]
-```
-
-### Step 10: Create Environment Template
-
-**.env.example**:
-
-```env
-# Platform JWT (shared secret for JWT validation)
-PLATFORM_SERVICE_TOKEN=your-shared-secret
-
-# Platform API (for token resolution)
-PLATFORM_URL=https://your-platform.com
-
-# Server
-PORT=8080
-NODE_ENV=development
-LOG_LEVEL=info
-```
-
-### Step 11: Create .dockerignore
-
-**.dockerignore**:
-
-```
-dist/
-build/
-node_modules/
-.env
-.env.local
-.git/
-*.md
-agent/
-.vscode/
-*.log
-```
-
-### Step 12: Create .gitignore
-
-**.gitignore**:
-
-```
-node_modules/
-dist/
-build/
-.env
-.env.local
-*.log
-.DS_Store
-```
-
-### Step 13: Deploy to Cloud Run
-
-```bash
-# Build locally
-npm run build
-docker build -t gcr.io/YOUR_PROJECT/your-mcp-server:latest .
-
-# Push to GCR
-docker push gcr.io/YOUR_PROJECT/your-mcp-server:latest
-
-# Generate service token
-SERVICE_TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
-
-# Create secret
-echo -n "$SERVICE_TOKEN" | gcloud secrets create platform-service-token --data-file=-
-
-# Deploy
-gcloud run deploy your-mcp-server \
-  --image gcr.io/YOUR_PROJECT/your-mcp-server:latest \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars="PLATFORM_URL=https://your-platform.com,NODE_ENV=production" \
-  --update-secrets=PLATFORM_SERVICE_TOKEN=platform-service-token:latest \
-  --min-instances=0 \
-  --max-instances=10 \
-  --memory=512Mi \
-  --cpu=1
-```
+---
 
 ## Base MCP Server Requirements
 
-For this pattern to work, your base MCP server must:
-
-### 1. Export a Server Factory
+### For Static Pattern
 
 ```typescript
 // your-mcp-base/src/server-factory.ts
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
-export function createYourServer(
-  accessToken: string,
+export async function createYourServer(
+  accessToken: string,  // Empty string for static servers
   userId: string,
   options?: ServerOptions
-): Server {
-  // Create API client with user's token
-  const client = new YourAPIClient(accessToken);
+): Promise<Server> {
+  // Initialize with environment variables
+  const apiKey = process.env.YOUR_API_KEY!;
+  const dbUrl = process.env.DATABASE_URL!;
+  
+  // Create per-user isolated storage
+  const storage = new UserStorage(userId, dbUrl);
+  await storage.initialize();
   
   // Create MCP server
   const server = new Server({
@@ -583,13 +935,12 @@ export function createYourServer(
     capabilities: { tools: {} }
   });
   
-  // Register all tools with {resourceType}_ prefix
+  // Register tools with {resourceType}_ prefix
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
-        { name: 'yourservice_get_data', description: '...', inputSchema: {...} },
-        { name: 'yourservice_create_item', description: '...', inputSchema: {...} },
-        // All tools prefixed with resourceType
+        { name: 'yourservice_store', description: '...', inputSchema: {...} },
+        { name: 'yourservice_recall', description: '...', inputSchema: {...} },
       ]
     };
   });
@@ -597,14 +948,13 @@ export function createYourServer(
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     
-    // Handle tool calls - names match the registered names
     switch (name) {
-      case 'yourservice_get_data':
-        // Handle tool
+      case 'yourservice_store':
+        // Use storage with userId isolation
+        await storage.store(args.data);
         break;
-      case 'yourservice_create_item':
-        // Handle tool
-        break;
+      case 'yourservice_recall':
+        return await storage.recall(args.query);
     }
   });
   
@@ -612,206 +962,10 @@ export function createYourServer(
 }
 ```
 
-**Important**: Tool names MUST follow the convention `{resourceType}_{tool_name}` where `resourceType` matches the value you'll use in `wrapServer()` config. See [TOOL-NAMING-CONVENTION.md](../TOOL-NAMING-CONVENTION.md) for details.
-
-### 2. Package Exports
-
-**package.json**:
-
-```json
-{
-  "name": "@your-org/your-mcp-base",
-  "exports": {
-    ".": "./build/index.js",
-    "./factory": "./build/server-factory.js",
-    "./client": "./build/your-client.js",
-    "./tools": "./build/tools/index.js"
-  }
-}
-```
-
-### 3. Build Configuration
-
-Must generate:
-- All source files as .js
-- TypeScript declarations (.d.ts)
-- Preserve directory structure
-
-## Platform API Requirements
-
-The platform must implement:
+### For Dynamic Pattern
 
 ```typescript
-// GET /api/credentials/:provider
-// Headers: { Authorization: Bearer <jwt-token>, X-User-ID: <user-id> }
-
-import type { CredentialsAPIResponse } from '@prmichaelsen/mcp-auth';
-import jwt from 'jsonwebtoken';
-
-export async function GET(request: Request, { params }: { params: { provider: string } }) {
-  // 1. Validate JWT token (same secret as MCP server)
-  const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '');
-  if (!jwtToken) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  
-  try {
-    jwt.verify(jwtToken, process.env.PLATFORM_SERVICE_TOKEN!, {
-      issuer: 'agentbase.me',
-      audience: 'mcp-server'
-    });
-  } catch (error) {
-    return Response.json({ error: 'Invalid token' }, { status: 401 });
-  }
-  
-  // 2. Get userId
-  const userId = request.headers.get('X-User-ID');
-  if (!userId) {
-    return Response.json({ error: 'X-User-ID required' }, { status: 400 });
-  }
-  
-  // 3. Query database
-  const credentials = await db.query(
-    'SELECT access_token FROM credentials WHERE user_id = $1 AND provider = $2',
-    [userId, params.provider]
-  );
-  
-  if (!credentials.rows[0]) {
-    return Response.json({ error: 'Credentials not found' }, { status: 404 });
-  }
-  
-  // 4. Return token
-  const response: CredentialsAPIResponse = {
-    access_token: credentials.rows[0].access_token,
-    expires_at: credentials.rows[0].expires_at,
-    // ... other fields
-  };
-  
-  return Response.json(response);
-}
-```
-
-## Testing
-
-### 1. Local Testing
-
-```bash
-# Start server
-npm start
-
-# Test health
-curl http://localhost:8080/mcp/health
-
-# Test with Platform JWT
-# Generate test JWT (use your PLATFORM_SERVICE_TOKEN)
-node -e "const jwt = require('jsonwebtoken'); console.log(jwt.sign({ userId: 'test-user' }, 'your-service-token', { issuer: 'agentbase.me', audience: 'mcp-server', expiresIn: '1h' }))"
-
-# Test MCP endpoint
-curl -X POST http://localhost:8080/mcp/message \
-  -H "Authorization: Bearer <jwt-from-above>" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
-```
-
-### 2. Production Testing
-
-```bash
-# Get Platform JWT from your platform
-# Then test MCP endpoint
-curl -X POST https://your-server.run.app/mcp/message \
-  -H "Authorization: Bearer <platform-jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
-```
-
-## Architecture Summary
-
-```
-Client (Platform JWT)
-  ↓
-Platform JWT Provider (validates JWT → userId)
-  ↓
-Platform Token Resolver (userId → API token via platform with JWT forwarding)
-  ↓
-Your MCP Server (executes tools with {resourceType}_ prefix)
-  ↓
-Your External API
-```
-
-## Key Benefits
-
-1. **Zero modification** to base MCP server
-2. **Automatic multi-tenancy** via server wrapping
-3. **Platform JWT authentication** built-in
-4. **JWT forwarding** to credentials API (single token flow)
-5. **Platform-managed credentials** (secure)
-6. **Stateless MCP server** (no database)
-7. **Type-safe** with shared API contracts
-8. **Production-ready** with health checks
-9. **Tool naming convention** enforced ({resourceType}_{tool_name})
-
-## Examples
-
-- **Instagram**: [@prmichaelsen/agentbase-mcp-server](https://github.com/prmichaelsen/agentbase-mcp-server)
-- **Base Pattern**: This document
-
-## Common Integrations
-
-### GitHub MCP Server
-```typescript
-import { createGitHubServer } from '@your-org/github-mcp/factory';
-import { PlatformJWTProvider } from './auth/platform-jwt-provider.js';
-import { PlatformTokenResolver } from './auth/platform-token-resolver.js';
-
-const authProvider = new PlatformJWTProvider({
-  serviceToken: process.env.PLATFORM_SERVICE_TOKEN!,
-  issuer: 'agentbase.me',
-  audience: 'mcp-server'
-});
-
-const wrapped = wrapServer({
-  serverFactory: (accessToken, userId) => createGitHubServer(accessToken, userId),
-  authProvider,
-  tokenResolver: new PlatformTokenResolver({ platformUrl: 'https://platform.com', authProvider }),
-  resourceType: 'github',  // Tools must be named github_*
-  transport: { type: 'sse', port: 8080 }
-});
-```
-
-### Slack MCP Server
-```typescript
-import { createSlackServer } from '@your-org/slack-mcp/factory';
-import { PlatformJWTProvider } from './auth/platform-jwt-provider.js';
-import { PlatformTokenResolver } from './auth/platform-token-resolver.js';
-
-const authProvider = new PlatformJWTProvider({
-  serviceToken: process.env.PLATFORM_SERVICE_TOKEN!,
-  issuer: 'agentbase.me',
-  audience: 'mcp-server'
-});
-
-const wrapped = wrapServer({
-  serverFactory: (accessToken, userId) => createSlackServer(accessToken, userId),
-  authProvider,
-  tokenResolver: new PlatformTokenResolver({ platformUrl: 'https://platform.com', authProvider }),
-  resourceType: 'slack',  // Tools must be named slack_*
-  transport: { type: 'sse', port: 8080 }
-});
-```
-
-## Summary
-
-This pattern enables you to:
-- ✅ Take any MCP server with a factory function
-- ✅ Add Platform JWT authentication
-- ✅ Add JWT forwarding to credentials API
-- ✅ Add platform-managed credentials
-- ✅ Deploy as multi-tenant service
-- ✅ Zero modification to base server
-- ✅ Enforce tool naming convention ({resourceType}_{tool_name})
-
-**Total time**: ~4-6 hours for a new integration (most time is base server factory refactor)
-
-**Result**: Production-ready multi-tenant MCP server with Platform JWT auth!
-
-**See also**: [TOOL-NAMING-CONVENTION.md](../TOOL-NAMING-CONVENTION.md) for tool naming requirements
+export async function createYourServer(
+  accessToken: string,  // OAuth token from platform
+  userId: string,
+  options?:
