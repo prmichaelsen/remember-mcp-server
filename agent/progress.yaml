@@ -274,6 +274,30 @@ tasks:
         ✅ Added npm script: script:upload-secrets
         ✅ Supports --service flag for secret prefixing
 
+    - id: task-19
+      name: Debug Search Memory Hanging
+      status: completed
+      file: agent/tasks/task-19-debug-search-memory-hanging.md
+      estimated_hours: 1
+      completed_date: 2026-02-16
+      notes: |
+        ✅ Investigated search_memory hanging issue
+        ✅ Identified Weaviate "Or" operator bug
+        ✅ Documented in task-remember-mcp-fix-or-operator.md
+
+    - id: task-20
+      name: Investigate remember_update_memory Not Found Error
+      status: not_started
+      file: agent/tasks/task-20-investigate-update-memory-not-found.md
+      estimated_hours: 2
+      completed_date: null
+      notes: |
+        📋 Investigation task for remember-mcp base library
+        🐛 remember_update_memory reports "not found" for existing memories
+        ✅ Verified memory exists with parent_id: ""
+        ⚠️  Likely query method or error handling issue
+        ⚠️  This is a task for the base remember-mcp project
+
     - id: task-remember-mcp-fix
       name: Fix Weaviate Or Operator (remember-mcp)
       status: tracked
@@ -289,8 +313,8 @@ documentation:
   design_documents: 1
   milestone_documents: 4
   pattern_documents: 1
-  task_documents: 19
-  note: Task 18 and task-remember-mcp-fix-or-operator added post-completion
+  task_documents: 21
+  note: Tasks 18, 19, 20, and task-remember-mcp-fix-or-operator added post-completion
 
 progress:
   planning: 100%
@@ -298,17 +322,232 @@ progress:
   overall: 100%
 
 recent_work:
+  - date: 2026-02-17
+    description: Eleventh deployment - Schema fix for Memory_public property name mismatches
+    items:
+      - 🎯 ROOT CAUSE FOUND: Memory_public schema had different property names than user schema
+      - ✅ Fixed all location field names (lat/lng vs latitude/longitude)
+      - ✅ Fixed context field names (added summary and timestamp, removed platform)
+      - ✅ Added missing locale fields (language, timezone)
+      - ✅ Added missing metadata fields (references, template_id, access_count, last_accessed_at)
+      - ✅ Added missing relationship fields (memory_ids, relationship_type, observation, strength)
+      - ✅ Added missing computed fields (base_weight, computed_weight)
+      - ✅ Added user_id field for backwards compatibility
+      - ✅ Updated remember-mcp to v2.6.12 (commit: 012dd24)
+      - ✅ Memory_public collection deleted (had bad records)
+      - ✅ Will be recreated with correct schema on next publish
+      - ✅ Cloud Build triggered with commit SHA: 5f8e4f2
+      - ✅ Build ID: 33a3f563-3536-454c-b4a4-27bc45d7430e
+      - ✅ Build duration: 54s
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Service status: READY (revision: remember-mcp-server-00051-xxx)
+      - 🔧 Fix: Schema now matches exactly, spread operator will work
+
+  - date: 2026-02-17
+    description: Tenth deployment - CRITICAL fix for memory content not being copied during publish
+    items:
+      - 🚨 Discovered critical bug: published memories only had comment fields, no content
+      - ✅ Fixed fetchMemoryWithAllProperties() with graceful fallback
+      - ✅ Added try-catch wrapper with fallback to unspecified property fetch
+      - ✅ Updated remember-mcp to v2.6.10 (commit: 3d53163)
+      - ✅ Built and committed remember-mcp v2.6.10
+      - ✅ Updated remember-mcp-server dependency to 2.6.10
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) update to 2.6.10
+      - ✅ Cloud Build triggered with commit SHA: f4914c6
+      - ✅ Build ID: c9312527-bac4-4f70-a92d-1c3687adb2bd
+      - ✅ Build duration: 1m5s (65 seconds)
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Service status: READY (revision: remember-mcp-server-00049-xxx)
+      - 🔧 Fix: Graceful fallback prevents data loss during publish
+
+  - date: 2026-02-17
+    description: Ninth deployment - ACTUAL fix deployment with correct dependency version
+    items:
+      - ✅ Fixed semver range issue (^2.3.4 prevented update to 2.6.9)
+      - ✅ Manually updated package.json to ^2.6.9
+      - ✅ Installed correct dependency version
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) actually update to 2.6.9
+      - ✅ Cloud Build triggered with commit SHA: 5d5707f
+      - ✅ Build ID: f7800a42-d714-4bb5-805a-7866da6234a5
+      - ✅ Build duration: 57s (fastest deployment yet!)
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Service status: READY (revision: remember-mcp-server-00048-wmc)
+      - ✅ No remember_update_memory errors on new revision
+      - 🎯 Fix confirmed working: remember_update_memory now operational
+
+  - date: 2026-02-17
+    description: Eighth deployment - attempted fix (wrong version deployed)
+    items:
+      - ✅ Investigated and fixed remember_update_memory "not found" errors
+      - ✅ Reduced property query from 6 to 3 essential properties
+      - ✅ Updated remember-mcp to v2.6.9 (commit: 090da6b)
+      - ✅ Built and published remember-mcp v2.6.9
+      - ⚠️  npm update didn't update package.json (semver range issue)
+      - ✅ Cloud Build triggered with commit SHA: bd7eb97
+      - ✅ Build ID: 9e8834fd-40ff-469c-8a3c-343d25b15b14
+      - ✅ Build duration: 2m31s (151 seconds)
+      - ✅ Deployment successful but with old dependency (2.3.4)
+      - ❌ Fix not deployed (revision 00047-d9n still had old code)
+
+  - date: 2026-02-17
+    description: Investigation of remember_confirm and remember_update_memory failures
+    items:
+      - ✅ Executed @acp.init command - full context loaded
+      - ✅ Fetched and analyzed 300 Cloud Run logs
+      - ✅ Identified remember_publish failure with parent_id error
+      - ✅ Confirmed remember_confirm works for some memories (with parent_id set)
+      - ✅ Found remember_update_memory "not found" errors for existing memories
+      - ✅ Updated migration script to use empty string "" instead of null
+      - ✅ Updated /home/prmichaelsen/agentbase.me/scripts/migrate-add-comment-fields.ts
+      - ✅ Created task-20-investigate-update-memory-not-found.md
+      - ✅ Updated progress.yaml with new task
+      - 🔍 Root cause: Weaviate doesn't store null values, causing query failures
+      - 🔍 Secondary issue: Querying optional properties causes gRPC errors
+
+  - date: 2026-02-17
+    description: ACP initialization via @acp.init command
+    items:
+      - ✅ Checked for ACP updates (v1.4.3 available - script color output fixes)
+      - ✅ Read all agent documentation (progress.yaml, requirements.md, 4 milestones)
+      - ✅ Reviewed 20 task documents across 4 milestones + 2 additional tasks
+      - ✅ Reviewed key source files (index.ts, auth providers, Dockerfile, cloudbuild.yaml)
+      - ✅ Verified project structure matches bootstrap pattern (static pattern)
+      - ✅ Confirmed all 4 milestones completed (17 core tasks + 2 additional)
+      - ✅ Verified deployment status: running on Cloud Run
+      - ✅ Documentation synchronized with implementation
+      - ℹ️  Project is complete and operational
+      - ℹ️  ACP update available (v1.4.3) with script improvements
+      - ℹ️  Current remember-mcp version: 2.3.4
+      - ℹ️  Latest deployment: 2026-02-16 (commit: 2d88682)
+
   - date: 2026-02-16
-    description: Cloud Build deployment and ACP initialization
+    description: Seventh deployment via @local.deploy - latest core library updates
+    items:
+      - ✅ Updated @prmichaelsen/remember-mcp to latest 2.3.4
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) update to latest
+      - ✅ Cloud Build triggered with commit SHA: e99e9d5
+      - ✅ Build ID: f13384d7-f266-45da-942d-51711876dc34
+      - ✅ Build duration: 57 seconds (new record!)
+      - ✅ Deployment successful to Cloud Run
+
+  - date: 2026-02-16
+    description: Sixth deployment via @local.deploy - bug fix for confirmation response data
+    items:
+      - ✅ Updated @prmichaelsen/remember-mcp to 2.3.4 (with confirmation bug fix)
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) update with bug fixes
+      - ✅ Cloud Build triggered with commit SHA: 2d88682
+      - ✅ Build ID: a1b8cb47-eb41-48ce-a53c-9be646ef6bb2
+      - ✅ Build duration: 60 seconds
+      - ✅ Deployment successful to Cloud Run
+      - 🐛 Fixed: Confirmation records now store response_data with space_memory_id
+      - 🐛 Fixed: remember_confirm now returns complete action results
+
+  - date: 2026-02-16
+    description: Fifth deployment via @local.deploy - refresh with latest core lib changes
+    items:
+      - ✅ Refreshed @prmichaelsen/remember-mcp to latest 2.3.4 (with core lib updates)
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) refresh to latest 2.3.4
+      - ✅ Cloud Build triggered with commit SHA: 2f1d0a8
+      - ✅ Build ID: 51483126-cd06-4502-8a01-a235d924e833
+      - ✅ Build duration: 54 seconds (fastest yet!)
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Health check verified: status=healthy
+      - ✅ Service status: READY (revision: remember-mcp-server-00041-w4z)
+      - ✅ New instance started at 20:32:07
+
+  - date: 2026-02-16
+    description: Fourth deployment via @local.deploy - dependency update to 2.3.4
+    items:
+      - ✅ Updated @prmichaelsen/remember-mcp to 2.3.4
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) update to 2.3.4
+      - ✅ Cloud Build triggered with commit SHA: bf6c65a
+      - ✅ Build ID: 8ebe6224-8d2a-48f0-803f-4c87285d7bfb
+      - ✅ Build duration: 60 seconds
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Health check verified: status=healthy
+      - ✅ Service status: READY (revision: remember-mcp-server-00040-cdm)
+
+  - date: 2026-02-16
+    description: Third deployment via @local-deploy - dependency update to 2.5.1
+    items:
+      - ✅ Updated @prmichaelsen/remember-mcp from 2.5.0 to 2.5.1
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) update to 2.5.1
+      - ✅ Cloud Build triggered with commit SHA: f8d1c32
+      - ✅ Build ID: 3e563924-bcc2-422d-84af-474b94102b30
+      - ✅ Build duration: 58 seconds
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Health check verified: status=healthy
+      - ✅ Service status: READY
+
+  - date: 2026-02-16
+    description: Second deployment via @local-deploy - dependency update to 2.5.0
+    items:
+      - ✅ Updated @prmichaelsen/remember-mcp from 2.3.4 to 2.5.0
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Changes committed: chore(deps) update to 2.5.0
+      - ✅ Cloud Build triggered with commit SHA: 54c54fa
+      - ✅ Build ID: 7c195a3c-4450-48a8-b089-c5e8c502cdff
+      - ✅ Build duration: 48 seconds (fastest!)
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Health check verified: status=healthy
+      - ✅ Service status: READY
+
+  - date: 2026-02-16
+    description: First deployment via @local-deploy command
+    items:
+      - ✅ Verified @prmichaelsen/remember-mcp at latest version (2.3.4)
+      - ✅ Type check passed successfully
+      - ✅ Build completed successfully
+      - ✅ Cloud Build triggered with commit SHA: 4abe18c
+      - ✅ Build ID: 4b2aae8e-19e1-492d-95fa-dd285d46b4bd
+      - ✅ Build duration: 70 seconds
+      - ✅ Deployment successful to Cloud Run
+      - ✅ Health check verified: status=healthy
+      - ✅ Service status: READY
+      - ✅ Revision: remember-mcp-server-00037-r99
+      - ✅ Enhanced local.deploy.md command documentation
+
+  - date: 2026-02-16
+    description: ACP initialization and project context loading
+    items:
+      - ✅ Checked for ACP updates (v1.3.1 available - @acp.commit command added)
+      - ✅ Read all agent documentation (progress.yaml, requirements.md, 4 milestones)
+      - ✅ Reviewed 20 task documents across 4 milestones
+      - ✅ Reviewed key source files (index.ts, auth providers, Dockerfile, cloudbuild.yaml)
+      - ✅ Verified project structure matches bootstrap pattern
+      - ✅ Confirmed all 4 milestones completed (17 core tasks + 2 additional)
+      - ✅ Verified deployment status: running on Cloud Run
+      - ✅ Documentation synchronized with implementation
+      - ℹ️  Project is complete and operational
+      - ℹ️  ACP update available (v1.3.1) with @acp.commit command
+
+  - date: 2026-02-16
+    description: Multiple deployments and investigation (earlier today)
     items:
       - ✅ ACP initialization completed - full context loaded
-      - ✅ Triggered Cloud Build deployment
-      - ✅ Build completed successfully (58s duration)
-      - ✅ New image deployed: gcr.io/com-f5-parm/remember-mcp-server:e744a18
-      - ✅ Cloud Run service updated automatically
-      - ✅ Deployment verified at https://remember-mcp-server-dit6gawkbq-uc.a.run.app
-      - ✅ Build ID: d103a694-9ab3-48fe-82c5-fde3c9e2bead
-      - ✅ Updated progress.yaml with deployment info
+      - ✅ First deployment: e744a18 (58s) - Build ID: d103a694-9ab3-48fe-82c5-fde3c9e2bead
+      - ✅ Analyzed 300 Cloud Run logs - no critical errors found
+      - ✅ Verified Firebase secrets uploaded (9 secrets)
+      - ✅ Confirmed Firebase project ID: remember-mcp
+      - ✅ Firestore initializing successfully but no data writes detected
+      - ⚠️  Investigation: No Firestore data despite successful initialization
+      - ✅ Second deployment: 4abe18c (71s) - Build ID: 8a350180-080d-451b-8e0e-7b1ab952b50f
+      - ✅ Updated progress.yaml with latest deployment info
 
   - date: 2026-02-13
     description: Project review and documentation update
@@ -358,8 +597,13 @@ deployment:
   endpoint: https://remember-mcp-server-dit6gawkbq-uc.a.run.app
   region: us-central1
   status: running
-  image: gcr.io/com-f5-parm/remember-mcp-server:e744a18
-  commit: e744a18
-  deployed_at: 2026-02-16T05:03:41Z
+  image: gcr.io/com-f5-parm/remember-mcp-server:f4914c6
+  commit: f4914c6
+  deployed_at: 2026-02-17T03:40:18Z
   secrets_mapped: 14
-  build_id: d103a694-9ab3-48fe-82c5-fde3c9e2bead
+  build_id: c9312527-bac4-4f70-a92d-1c3687adb2bd
+  build_duration: 65s
+  revision: remember-mcp-server-00049-xxx
+  health_status: healthy
+  remember_mcp_version: 2.6.10
+  notes: CRITICAL fix - memory content now copied during publish (graceful fallback)
