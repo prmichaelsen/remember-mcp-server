@@ -287,16 +287,18 @@ tasks:
 
     - id: task-20
       name: Investigate remember_update_memory Not Found Error
-      status: not_started
+      status: completed
       file: agent/tasks/task-20-investigate-update-memory-not-found.md
       estimated_hours: 2
-      completed_date: null
+      completed_date: 2026-02-17
       notes: |
-        📋 Investigation task for remember-mcp base library
-        🐛 remember_update_memory reports "not found" for existing memories
-        ✅ Verified memory exists with parent_id: ""
-        ⚠️  Likely query method or error handling issue
-        ⚠️  This is a task for the base remember-mcp project
+        ✅ Investigation completed - root cause identified
+        ✅ handleUpdateMemory() was using direct fetchObjectById() call
+        ✅ Fixed by using fetchMemoryWithAllProperties() wrapper
+        ✅ Wrapper has fallback logic for schema evolution
+        ✅ Applied fix to remember-mcp/src/tools/update-memory.ts
+        ✅ Build successful - ready for version bump and deployment
+        📄 Full report: agent/reports/task-20-investigation-report.md
 
     - id: task-remember-mcp-fix
       name: Fix Weaviate Or Operator (remember-mcp)
@@ -322,6 +324,21 @@ progress:
   overall: 100%
 
 recent_work:
+  - date: 2026-02-17
+    description: Task 20 investigation completed - Fixed remember_update_memory "not found" error
+    items:
+      - ✅ Investigated remember_update_memory "Memory not found" errors
+      - ✅ Compared handleUpdateMemory() with working tools (handlePublish())
+      - ✅ Identified root cause: missing fetchMemoryWithAllProperties() wrapper
+      - ✅ Applied fix to /home/prmichaelsen/remember-mcp/src/tools/update-memory.ts
+      - ✅ Added import for fetchMemoryWithAllProperties from weaviate/client.js
+      - ✅ Replaced direct fetchObjectById() with wrapper function
+      - ✅ Build successful - no errors
+      - ✅ Created comprehensive investigation report
+      - 📄 Report: agent/reports/task-20-investigation-report.md
+      - 🔧 Fix: Wrapper provides graceful fallback for schema evolution
+      - 📋 Next: Bump remember-mcp version and deploy
+
   - date: 2026-02-17
     description: Eleventh deployment - Schema fix for Memory_public property name mismatches
     items:
