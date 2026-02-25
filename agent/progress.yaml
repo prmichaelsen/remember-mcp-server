@@ -325,6 +325,7 @@ progress:
 
 recent_work:
   - date: 2026-02-25
+<<<<<<< HEAD
     description: ACP initialization via @acp.init command
     items:
       - ⚠️  ACP updates available (v4.1.1 - Task structure documentation updates)
@@ -357,6 +358,8 @@ recent_work:
       - ℹ️  Service runs in ephemeral mode (per-request instances)
 
   - date: 2026-02-25
+=======
+>>>>>>> parent of 6db2e36 (bump: @prmichaelsen/remember-mcp for delete flow)
     description: Installed mcp-auth-server-base package (v1.1.0)
     items:
       - ✅ Installed 18 patterns for MCP auth server development
