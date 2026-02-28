@@ -5,7 +5,8 @@
       "Bash(node:*)",
       "Bash(gcloud run:*)",
       "Bash(curl:*)",
-      "Bash(gcloud logging:*)"
+      "Bash(gcloud logging:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
