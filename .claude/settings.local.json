@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(node:*)",
+      "Bash(gcloud run:*)",
+      "Bash(curl:*)",
+      "Bash(gcloud logging:*)"
+    ]
+  }
+}
