@@ -43,9 +43,13 @@ const authProvider = new PlatformJWTProvider({
 
 // Wrap server with authentication
 const wrappedServer = wrapServer({
-  serverFactory: async (accessToken: string, userId: string) => {
-    // createServer is now async and initializes databases
-    return await createRememberServer(accessToken, userId);
+  serverFactory: async (accessToken, userId, extras) => {
+    return await createRememberServer(accessToken, userId, {
+      ghostMode: extras?.ghost_owner ? {
+        owner_user_id: extras.ghost_owner as string,
+        accessor_user_id: userId,
+      } : undefined,
+    });
   },
   authProvider,
   resourceType: 'remember',

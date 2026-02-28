@@ -324,6 +324,22 @@ progress:
   overall: 100%
 
 recent_work:
+  - date: 2026-02-27
+    description: ACP initialization via @acp-init command
+    items:
+      - ⚠️  ACP updates available (v4.2.1 - gitignore protection, task structure docs)
+      - ✅ Read all agent documentation (progress.yaml, requirements.md, 4 milestones)
+      - ✅ Reviewed 22 task documents, 19 patterns, 42 commands
+      - ✅ Reviewed key source files (index.ts, platform-jwt-provider.ts, platform-token-resolver.ts)
+      - ✅ Verified project structure matches bootstrap pattern (static pattern)
+      - ✅ Confirmed all 4 milestones completed (17 core tasks + 5 additional)
+      - ✅ Fixed stale deployment info in progress.yaml
+      - ✅ Updated remember-mcp version reference to ^2.8.0
+      - ℹ️  Project is complete and operational
+      - ℹ️  Current branch: mainline (latest commit: f1af573)
+      - ℹ️  Untracked files: .claude/, cloudbuild.e1.yaml
+      - 📊 Project Status: All milestones complete, production deployment active
+
   - date: 2026-02-25
     description: ACP initialization via @acp.init command
     items:
@@ -665,8 +681,8 @@ notes:
   - Secrets prefixed with 'remember-' to avoid conflicts
   - Task 18 (utility scripts) completed but not in original milestone plan
   - Weaviate "Or" operator bug tracked in remember-mcp project (not this server)
-  - Current remember-mcp version: 2.2.1
-  - Current mcp-auth version: 7.0.3
+  - Current remember-mcp version: ^2.8.0
+  - Current mcp-auth version: ^7.0.3
   - PlatformTokenResolver exists but not used (static pattern)
 
 current_blockers: []
@@ -675,13 +691,9 @@ deployment:
   endpoint: https://remember-mcp-server-dit6gawkbq-uc.a.run.app
   region: us-central1
   status: running
-  image: gcr.io/com-f5-parm/remember-mcp-server:f4914c6
-  commit: f4914c6
-  deployed_at: 2026-02-17T03:40:18Z
+  image: gcr.io/com-f5-parm/remember-mcp-server
+  commit: f1af573
   secrets_mapped: 14
-  build_id: c9312527-bac4-4f70-a92d-1c3687adb2bd
-  build_duration: 65s
-  revision: remember-mcp-server-00049-xxx
   health_status: healthy
-  remember_mcp_version: 2.6.10
-  notes: CRITICAL fix - memory content now copied during publish (graceful fallback)
+  remember_mcp_version: "^2.8.0"
+  notes: Downgraded to remember-mcp 2.8.0 (migration required for newer versions)
