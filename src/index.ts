@@ -44,6 +44,14 @@ const authProvider = new PlatformJWTProvider({
 // Wrap server with authentication
 const wrappedServer = wrapServer({
   serverFactory: async (accessToken, userId, extras) => {
+    // Debug logging for ghost mode
+    console.log('[DEBUG] serverFactory called', {
+      userId,
+      extras,
+      hasGhostOwner: !!extras?.ghost_owner,
+      ghostOwner: extras?.ghost_owner
+    });
+
     return await createRememberServer(accessToken, userId, {
       ghostMode: extras?.ghost_owner ? {
         owner_user_id: extras.ghost_owner as string,
