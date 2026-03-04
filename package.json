@@ -26,7 +26,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@prmichaelsen/mcp-auth": "^7.4.1",
-    "@prmichaelsen/remember-mcp": "^3.14.15",
+    "@prmichaelsen/remember-mcp": "^3.14.16",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
