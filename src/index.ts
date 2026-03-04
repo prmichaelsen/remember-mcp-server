@@ -72,7 +72,7 @@ const wrappedServer = wrapServer({
   middleware: {
     rateLimit: {
       enabled: true,
-      maxRequests: 100,
+      maxRequests: 1000,
       windowMs: 60 * 60 * 1000 // 1 hour
     },
     logging: {

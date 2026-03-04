@@ -3,7 +3,7 @@ project:
   version: 0.1.0
   started: 2026-02-11
   status: completed
-  current_milestone: M4
+  current_milestone: M5
   description: Multi-tenant MCP server wrapping remember-mcp with Platform JWT authentication
 
 milestones:
@@ -62,6 +62,21 @@ milestones:
       Deploy to Cloud Run and verify production operation.
       Complete documentation and testing.
       ✅ All tasks completed successfully.
+
+  - id: M5
+    name: Performance Optimization
+    status: in_progress
+    progress: 66
+    started: 2026-03-04
+    completed: null
+    estimated_weeks: 1
+    tasks_completed: 2
+    tasks_total: 4
+    notes: |
+      Identify and implement performance enhancements in the wrapper layer.
+      Task 22 (audit) complete. 2 follow-up tasks: P0/P1 config fixes,
+      P2 jwtTokenCache eviction. Instance pooling downgraded to P3 (only
+      saves ~10ms, auth context complexity not worth it).
 
 tasks:
   milestone_1:
@@ -311,11 +326,43 @@ tasks:
         ⚠️  This is a task for the base remember-mcp project
         ⚠️  Not part of this wrapper server implementation
 
+  milestone_5:
+    - id: task-22
+      name: Identify Performance Enhancements
+      status: completed
+      file: agent/tasks/task-22-identify-performance-enhancements.md
+      estimated_hours: 2-3
+      completed_date: 2026-03-04
+      notes: |
+        ✅ Audit complete. Key finding: mcp-auth already supports instance pooling
+        via instanceMode:'pooled' — we're using ephemeral mode (default).
+        8 enhancements identified, prioritized P0-P3.
+        Report: agent/reports/performance-audit.md
+    - id: task-23
+      name: Apply P0/P1 Config Fixes (rate limit, min-instances, timeout)
+      status: completed
+      file: agent/tasks/task-23-apply-config-fixes.md
+      estimated_hours: 0.5
+      completed_date: 2026-03-04
+      notes: |
+        ✅ Rate limit 100/hr → 1000/hr (src/index.ts)
+        ✅ min-instances 0 → 1 (cloudbuild.yaml)
+        ✅ timeout 60s → 300s (cloudbuild.yaml)
+        ✅ Type-check passes. Ready to deploy.
+    - id: task-24
+      name: Fix JWT Token Cache Eviction (P2)
+      status: not_started
+      file: agent/tasks/task-24-fix-jwt-cache-eviction.md
+      estimated_hours: 0.5
+      completed_date: null
+      notes: |
+        Add TTL-based eviction to jwtTokenCache to prevent unbounded growth.
+
 documentation:
   design_documents: 1
-  milestone_documents: 4
+  milestone_documents: 5
   pattern_documents: 1
-  task_documents: 21
+  task_documents: 24
   note: Tasks 18, 19, 20, and task-remember-mcp-fix-or-operator added post-completion
 
 progress:
@@ -324,6 +371,19 @@ progress:
   overall: 100%
 
 recent_work:
+  - date: 2026-03-04
+    description: Task 22+23 — Performance audit and config fixes applied
+    items:
+      - ✅ Audited auth layer, server factory, transport, Docker, Cloud Run config
+      - ✅ Discovered mcp-auth supports instance pooling but downgraded to P3
+      - ✅ Weaviate client is already a singleton — pooling saves only ~10ms
+      - ✅ Rate limit 100/hr → 1000/hr (src/index.ts)
+      - ✅ min-instances 0 → 1 (cloudbuild.yaml) — eliminates cold starts
+      - ✅ timeout 60s → 300s (cloudbuild.yaml) — prevents tool timeouts
+      - ✅ Type-check passes
+      - 📄 Report: agent/reports/performance-audit.md
+      - 📋 Remaining: task-24 (JWT cache eviction, P2)
+
   - date: 2026-02-27
     description: ACP initialization via @acp-init command
     items:
@@ -666,11 +726,10 @@ recent_work:
       - ✅ Removed SimpleTokenResolver workaround
 
 next_steps:
-  - Monitor production operation
+  - Deploy changes (rate limit, min-instances, timeout)
+  - Task 24: Fix JWT token cache eviction (P2, low priority)
+  - Monitor production latency after deploy
   - Consider adding monitoring/alerting (e.g., Cloud Monitoring)
-  - Consider adding structured logging
-  - Document lessons learned for future multi-tenant servers
-  - Consider adding metrics collection
 
 notes:
   - Project follows Agent Context Protocol (ACP) pattern
