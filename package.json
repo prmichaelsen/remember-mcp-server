@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "deploy": "gcloud builds submit --config=cloudbuild.yaml --substitutions=COMMIT_SHA=$(git rev-parse HEAD)",
+    "deploy:e1": "gcloud builds submit --config=cloudbuild.e1.yaml --substitutions=COMMIT_SHA=$(git rev-parse HEAD)",
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit",
     "script": "tsx",
@@ -26,7 +27,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@prmichaelsen/mcp-auth": "^7.4.1",
-    "@prmichaelsen/remember-mcp": "^3.15.3",
+    "@prmichaelsen/remember-mcp": "^3.15.4",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {

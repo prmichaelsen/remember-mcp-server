@@ -13,7 +13,8 @@
       "Bash(npm ls:*)",
       "Bash(gcloud builds:*)",
       "Bash(./agent/scripts/acp.version-check-for-updates.sh:*)",
-      "Bash(gcloud secrets:*)"
+      "Bash(gcloud secrets:*)",
+      "Bash(npm i:*)"
     ]
   }
 }
