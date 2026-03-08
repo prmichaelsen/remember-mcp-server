@@ -44,20 +44,16 @@ const authProvider = new PlatformJWTProvider({
 // Wrap server with authentication
 const wrappedServer = wrapServer({
   serverFactory: async (accessToken, userId, extras) => {
-    // Debug logging for ghost mode
+    // extras contains flat headers from mcp-auth (X-Internal-Type → internal_type, etc.)
+    // createRememberServer normalizes these into structured ServerOptions internally
     console.log('[DEBUG] serverFactory called', {
       userId,
-      extras,
-      hasGhostOwner: !!extras?.ghost_owner,
-      ghostOwner: extras?.ghost_owner
+      internalType: extras?.internal_type,
+      ghostOwner: extras?.ghost_owner,
+      ghostType: extras?.ghost_type,
     });
 
-    return await createRememberServer(accessToken, userId, {
-      ghostMode: extras?.ghost_owner ? {
-        owner_user_id: extras.ghost_owner as string,
-        accessor_user_id: userId,
-      } : undefined,
-    });
+    return await createRememberServer(accessToken, userId, extras);
   },
   authProvider,
   resourceType: 'remember',
@@ -67,7 +63,14 @@ const wrappedServer = wrapServer({
     host: '0.0.0.0',
     basePath: '/mcp',
     cors: true,
-    corsOrigin: process.env.CORS_ORIGIN || 'https://agentbase.me'
+    corsOrigin: process.env.CORS_ORIGIN || 'https://agentbase.me',
+    corsAllowedHeaders: [
+      'X-Internal-Type',
+      'X-Ghost-Owner',
+      'X-Ghost-Type',
+      'X-Ghost-Space',
+      'X-Ghost-Group',
+    ]
   },
   middleware: {
     rateLimit: {
