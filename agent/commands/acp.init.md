@@ -3,16 +3,49 @@
 > **🤖 Agent Directive**: If you are reading this file, the command `@acp-init` has been invoked. Follow the steps below to execute this command.
 
 **Namespace**: acp
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Created**: 2026-02-16
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-03-09
 **Status**: Active
+**Scripts**: None
 
 ---
 
 **Purpose**: Initialize agent context by loading all documentation, reviewing source code, and preparing for work
 **Category**: Workflow
 **Frequency**: Once Per Session
+
+---
+
+## Arguments
+
+| Argument | Aliases | Description |
+|---|---|---|
+| `--quick` | `-q` | Fast init: skips version checks, source file review, and documentation sync. Equivalent to `--skip checks,files,sync` |
+| `--skip <items>` | | Comma-separated list of steps to skip. Valid items: `checks`, `sessions`, `docs`, `global`, `keys`, `files`, `sync`, `progress` |
+
+### Skip Items Reference
+
+| Item | Steps Skipped | Description |
+|---|---|---|
+| `checks` | Step 1 | ACP version update check |
+| `sessions` | Step 1.5 | Session registration and sibling display |
+| `docs` | Step 2 | Reading agent documentation (progress, designs, milestones, tasks, patterns) |
+| `global` | Step 2.5 | Global package discovery |
+| `keys` | Step 2.8 | Key file index reading |
+| `files` | Steps 3-4 | Source file identification and review |
+| `sync` | Steps 5-6 | Documentation drift detection and stale doc updates |
+| `progress` | Step 7 | Progress tracking updates |
+
+### Argument Parsing
+
+Arguments are parsed from the user's invocation using natural language matching:
+- `@acp-init --quick` or `@acp-init -q`
+- `@acp-init --skip checks,sync`
+- `@acp-init --quick --skip sessions` (quick mode plus additional skips)
+- `@acp-init --skip checks,files,sync,progress` (granular control)
+
+When `--quick` is combined with `--skip`, the skip sets are merged (union).
 
 ---
 
@@ -38,6 +71,8 @@ Unlike `@acp-status` which only reads progress.yaml, or `@acp-proceed` which foc
 
 ### 1. Check for ACP Updates
 
+**Skip item**: `checks` | **Skipped by**: `--quick`
+
 Check if newer version of ACP is available.
 
 **Actions**:
@@ -48,7 +83,30 @@ Check if newer version of ACP is available.
 
 **Expected Outcome**: User informed of ACP version status
 
+### 1.5. Register Session and Show Siblings (Optional)
+
+**Skip item**: `sessions`
+
+Register this agent session and display any active sibling sessions.
+
+**Actions**:
+- If `./agent/scripts/acp.sessions.sh` exists, run `./agent/scripts/acp.sessions.sh register --project <current-project> --pid <agent-pid>`
+- If `./agent/scripts/acp.sessions.sh` exists, run `./agent/scripts/acp.sessions.sh list` and display active sibling sessions
+
+**Display format** (compact, one line per sibling):
+```
+Active Sessions: 2 others
+  remember-core — task-12 (Implement Auth) — 20m ago
+  agentbase.me — task-5 (Fix API Routes) — 8m ago
+```
+
+**Expected Outcome**: Session registered, sibling sessions displayed
+
+**Note**: If `./agent/scripts/acp.sessions.sh` does not exist, skip this step silently.
+
 ### 2. Read All Agent Documentation
+
+**Skip item**: `docs`
 
 Load complete context from the agent/ directory.
 
@@ -64,6 +122,8 @@ Load complete context from the agent/ directory.
 **Expected Outcome**: Complete documentation context loaded
 
 ### 2.5. Discover Global Packages (Optional)
+
+**Skip item**: `global`
 
 Check for globally installed ACP packages.
 
@@ -97,7 +157,39 @@ Check for globally installed ACP packages.
 
 **Note**: This step is optional and graceful - if no global packages exist or manifest is not found, continue without error.
 
+### 2.8. Read Key Files from Index
+
+**Skip item**: `keys`
+
+Load critical project files from the key file index.
+
+**Actions**:
+- Check if `agent/index/` directory exists
+- If exists, scan for all `*.yaml` files (excluding `*.template.yaml`)
+- Parse each index file's entries
+- Merge entries across namespaces (`local.*` takes precedence over package indices)
+- Filter entries with weight >= 0.8 (high-importance files for init)
+- Sort by weight descending
+- Read each qualifying file
+- Produce visible output showing what was read/skipped
+
+**Display format**:
+```
+📑 Reading Key Files...
+  ✓ agent/design/acp-commands-design.md (weight: 0.9, design)
+  ✓ agent/patterns/local.e2e-testing.md (weight: 0.8, pattern)
+  ○ agent/patterns/local.tracked-untracked-directories.md (weight: 0.7, skipped — below threshold)
+
+  2 index files scanned, 2 key files read, 1 skipped
+```
+
+**Expected Outcome**: High-importance key files loaded into context
+
+**Note**: If `agent/index/` does not exist, skip this step silently. The index is optional but recommended.
+
 ### 3. Identify Key Source Files
+
+**Skip item**: `files` | **Skipped by**: `--quick`
 
 Determine which source files are most important to review.
 
@@ -111,6 +203,8 @@ Determine which source files are most important to review.
 **Expected Outcome**: Key source files identified for review
 
 ### 4. Review Key Source Files
+
+**Skip item**: `files` | **Skipped by**: `--quick`
 
 Read important source files to understand current implementation.
 
@@ -126,6 +220,8 @@ Read important source files to understand current implementation.
 
 ### 5. Identify Documentation Drift
 
+**Skip item**: `sync` | **Skipped by**: `--quick`
+
 Compare documentation with actual implementation.
 
 **Actions**:
@@ -139,6 +235,8 @@ Compare documentation with actual implementation.
 
 ### 6. Update Stale Documentation
 
+**Skip item**: `sync` | **Skipped by**: `--quick`
+
 Refresh outdated documentation to match current state.
 
 **Actions**:
@@ -151,6 +249,8 @@ Refresh outdated documentation to match current state.
 **Expected Outcome**: Documentation synchronized with code
 
 ### 7. Update Progress Tracking
+
+**Skip item**: `progress`
 
 Refresh progress.yaml with latest status.
 
@@ -178,6 +278,26 @@ Provide comprehensive status report.
 - Provide recommendations
 
 **Expected Outcome**: User has complete context and knows what to do next
+
+### 9. Display Usage Tip
+
+Show a helpful tip about init flags when no flags were used.
+
+**Actions**:
+- If the user invoked `@acp-init` **without** `--quick` or `--skip`, display the following tip at the end of the output:
+  ```
+  Tip: Use `@acp-init --quick` to skip version checks, source file review, and doc sync for faster startup. Use `--skip <items>` to skip individual steps (e.g. `--skip checks,files`).
+  ```
+- If the user already used `--quick` or `--skip`, do **not** display the tip (they already know about it).
+
+**Expected Outcome**: Users discover the faster init modes naturally
+
+### Handling Skipped Steps
+
+When a step is skipped (via `--quick` or `--skip`), the agent should:
+1. **Not execute** any actions for that step
+2. **Not display** the step's section header or output block
+3. Simply omit the step silently — no "skipped" messages needed unless the agent chooses to show a compact summary of what was skipped at the top of the output
 
 ---
 
@@ -324,6 +444,22 @@ Ready to proceed with task-2 completion.
 
 **Result**: Complete onboarding - reads all documentation, understands architecture from source code, gets current status, ready to contribute immediately
 
+### Example 4: Quick Init
+
+**Context**: Returning to a familiar project, just need docs and status
+
+**Invocation**: `@acp-init --quick`
+
+**Result**: Skips version checks, source file review, and doc sync. Reads agent documentation, key files, reports status — fast startup in ~10 seconds
+
+### Example 5: Selective Skip
+
+**Context**: Want everything except version checks and session registration
+
+**Invocation**: `@acp-init --skip checks,sessions`
+
+**Result**: Full init minus the two skipped steps. All docs read, files reviewed, sync performed, status reported
+
 ---
 
 ## Related Commands
@@ -402,9 +538,9 @@ Ready to proceed with task-2 completion.
 
 **Namespace**: acp
 **Command**: init
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Created**: 2026-02-16
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-03-09
 **Status**: Active
 **Compatibility**: ACP 1.0.3+
 **Author**: ACP Project

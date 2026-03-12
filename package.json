@@ -12,7 +12,8 @@
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit",
     "script": "tsx",
-    "script:upload-secrets": "tsx scripts/upload-secrets.ts"
+    "script:upload-secrets": "tsx scripts/upload-secrets.ts",
+    "rollout": "npm i @prmichaelsen/remember-mcp@latest && git diff --quiet package.json package-lock.json || git commit -am 'bump: remember-mcp' && npm run deploy:e1 && npm run deploy"
   },
   "keywords": [
     "mcp",
@@ -27,7 +28,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@prmichaelsen/mcp-auth": "^7.4.2",
-    "@prmichaelsen/remember-mcp": "^3.17.4",
+    "@prmichaelsen/remember-mcp": "^3.18.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
