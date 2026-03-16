@@ -35,7 +35,7 @@ if (!config.platform.url) {
 // Create auth provider
 const authProvider = new PlatformJWTProvider({
   serviceToken: config.platform.serviceToken,
-  issuer: 'agentbase.me',
+  issuer: ['agentbase.me', 'memorycloud.chat'],
   audience: 'mcp-server',
   cacheResults: true,
   cacheTtl: 60000 // 60 seconds
@@ -63,7 +63,9 @@ const wrappedServer = wrapServer({
     host: '0.0.0.0',
     basePath: '/mcp',
     cors: true,
-    corsOrigin: process.env.CORS_ORIGIN || 'https://agentbase.me',
+    corsOrigin: process.env.CORS_ORIGIN?.includes(',')
+      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+      : process.env.CORS_ORIGIN || 'https://agentbase.me',
     corsAllowedHeaders: [
       'X-Internal-Type',
       'X-Ghost-Owner',

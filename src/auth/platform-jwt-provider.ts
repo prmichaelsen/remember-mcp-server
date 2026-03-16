@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 
 export interface PlatformJWTProviderConfig {
   serviceToken: string;
-  issuer: string;
+  issuer: string | [string, ...string[]];
   audience: string;
   cacheResults?: boolean;
   cacheTtl?: number;
