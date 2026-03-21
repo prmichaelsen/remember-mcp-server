@@ -17,7 +17,9 @@
       "Bash(npm i:*)",
       "mcp__gcloud-mcp__gcloud_list_secrets",
       "mcp__gcloud-mcp__gcloud_get_service_logs",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(./agent/scripts/acp.sessions.sh register:*)",
+      "Bash(./agent/scripts/acp.sessions.sh list:*)"
     ]
   }
 }
