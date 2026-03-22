@@ -19,7 +19,10 @@
       "mcp__gcloud-mcp__gcloud_get_service_logs",
       "Bash(npx tsc:*)",
       "Bash(./agent/scripts/acp.sessions.sh register:*)",
-      "Bash(./agent/scripts/acp.sessions.sh list:*)"
+      "Bash(./agent/scripts/acp.sessions.sh list:*)",
+      "Bash(jq -r \".[] | \"\"\\\\\\(.timestamp\\) [\\\\\\(.severity\\)] \\\\\\(.message // .textPayload // \\(.jsonPayload | tostring\\) // \"\"no message\"\"\\)\"\"\")",
+      "Bash(python3 -c \":*)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")"
     ]
   }
 }
