@@ -27,7 +27,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@prmichaelsen/mcp-auth": "^7.5.0",
+    "@prmichaelsen/mcp-auth": "^7.5.1",
     "@prmichaelsen/remember-mcp": "^4.1.0",
     "jsonwebtoken": "^9.0.2"
   },
