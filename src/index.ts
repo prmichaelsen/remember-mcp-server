@@ -57,6 +57,11 @@ const wrappedServer = wrapServer({
   },
   authProvider,
   resourceType: 'remember',
+  sessionMode: 'stateful',
+  session: {
+    idleTimeout: 300000,   // 5 min
+    maxLifetime: 3600000,  // 1 hour
+  },
   transport: {
     type: 'sse',
     port: config.server.port,

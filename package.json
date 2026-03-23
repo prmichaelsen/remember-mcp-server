@@ -1,6 +1,6 @@
 {
   "name": "@prmichaelsen/remember-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Multi-tenant MCP server for remember-mcp with Platform JWT authentication",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@prmichaelsen/mcp-auth": "^7.4.2",
+    "@prmichaelsen/mcp-auth": "^7.5.0",
     "@prmichaelsen/remember-mcp": "^4.1.0",
     "jsonwebtoken": "^9.0.2"
   },
