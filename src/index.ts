@@ -59,7 +59,7 @@ const wrappedServer = wrapServer({
   resourceType: 'remember',
   sessionMode: 'stateful',
   session: {
-    idleTimeout: 300000,   // 5 min
+    idleTimeout: 1800000,  // 30 min
     maxLifetime: 3600000,  // 1 hour
   },
   transport: {
